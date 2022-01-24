@@ -163,8 +163,8 @@ class SAmethods(object):
                     return thetaAvg, estimationError[:i]            
             
         
-        return thetaAvg, estimationError     
-    
+        return thetaAvg, estimationError   
+
     
     def ROOT(self, initTheta, numIter, burnin, numRestarts, epsilon = None):
         
@@ -280,6 +280,58 @@ class MRP_SAmethods(SAmethods):
     def __init__(self, dims, noisyOp, tqdmDisable = 1>0, addHigherOrder = 1>0):
         # calls the SAmethods initialization
         super().__init__(dims, noisyOp, tqdmDisable, addHigherOrder)
+
+
+    def SA_minimax(self, initTheta, numIter, gamma, stepCon = 1):
+
+        '''Stochastic approximation algorithm with stepsize from 
+            https://arxiv.org/pdf/2102.06548.pdf
+        
+        Inputs: 
+            initTheta = This is the initializer of the algorithm,
+                        an array (single / multidimensional) with dimension
+                        SAmethods.dims (the dimesion of the class)
+                        
+                        
+            numIter = number of iterations >= 1
+            
+            stepsize = 1 / (1 + stepCon (1 - gamma) t / log^2 numIter)
+            
+        
+        
+        Outputs:
+            
+            theta: the putput of the algorithm which is an array with dimension 
+                   SAmethods.dims
+                   
+            estimationError : This is a one dimensional array of length numIter 
+                              containing infty-norm distances of the iterates of the algorithm
+                              from the SAmethods.Optval
+        
+        '''
+    
+        if initTheta.shape != self.dims:
+            raise ValueError('dimension mismatch in SA algorithm')
+            
+        
+        theta = initTheta
+        thetaNew = initTheta
+        estimationError = np.zeros([numIter])
+        
+        for i in tqdm(range(numIter), disable = self.tqdmDisable):
+            noisyOpEval = self.noisyOp.get_eval(theta)
+            stepsize = 1 / (1 + stepCon * (1 - gamma) * i / (np.power(np.log(numIter), 2)))
+            thetaNew = (1 - stepsize) * theta + stepsize * noisyOpEval
+            estimationError[i] = npl.norm(theta.flatten() - self.Optval.flatten(), np.inf)
+            
+            theta = thetaNew
+            
+            if epsilon is not None:
+                if estimationError[i] < epsilon:
+                    return theta, estimationError[:i]            
+            
+        
+        return theta, estimationError
 
 
     def ROOT_MRP_with_CI(self, initTheta, numIter, burnin, gamma, numRestarts, CIPrefactor = 1,
@@ -647,6 +699,58 @@ class MDP_SAmethods(SAmethods):
         # calls the SAmethods initialization
         super().__init__(dims, noisyOp, tqdmDisable, addHigherOrder)
 
+
+
+    def SA_minimax(self, initTheta, numIter, gamma, stepCon = 1):
+
+        '''Stochastic approximation algorithm with stepsize from 
+            https://arxiv.org/pdf/2102.06548.pdf
+        
+        Inputs: 
+            initTheta = This is the initializer of the algorithm,
+                        an array (single / multidimensional) with dimension
+                        SAmethods.dims (the dimesion of the class)
+                        
+                        
+            numIter = number of iterations >= 1
+            
+            stepsize = 1 / (1 + stepCon (1 - gamma) t / log^2 numIter)
+            
+        
+        
+        Outputs:
+            
+            theta: the putput of the algorithm which is an array with dimension 
+                   SAmethods.dims
+                   
+            estimationError : This is a one dimensional array of length numIter 
+                              containing infty-norm distances of the iterates of the algorithm
+                              from the SAmethods.Optval
+        
+        '''
+    
+        if initTheta.shape != self.dims:
+            raise ValueError('dimension mismatch in SA algorithm')
+            
+        
+        theta = initTheta
+        thetaNew = initTheta
+        estimationError = np.zeros([numIter])
+        
+        for i in tqdm(range(numIter), disable = self.tqdmDisable):
+            noisyOpEval = self.noisyOp.get_eval(theta)
+            stepsize = 1 / (1 + stepCon * (1 - gamma) * i / (np.power(np.log(numIter), 2)))
+            thetaNew = (1 - stepsize) * theta + stepsize * noisyOpEval
+            estimationError[i] = npl.norm(theta.flatten() - self.Optval.flatten(), np.inf)
+            
+            theta = thetaNew
+            
+            if epsilon is not None:
+                if estimationError[i] < epsilon:
+                    return theta, estimationError[:i]            
+            
+        
+        return theta, estimationError
 
     def ROOT_MRP_with_CI(self, initTheta, numIter, burnin, gamma, numRestarts, CIPrefactor = 3,
                     pardelta = 0.1):
